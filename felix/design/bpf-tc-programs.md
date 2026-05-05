@@ -16,7 +16,7 @@ limitations under the License.
 
 # eBPF dataplane — TC program layout
 
-How TC BPF programs are organised: the per-interface preamble, the two-tier jump maps that decouple per-endpoint policy from generic packet-handling, the `skb->cb` allow/deny convention, and the fast/debug path machinery. Also covers the `cali_iface` ifstate map and the attach-gap protection it enables.
+How the per-interface BPF programs are organised: the attach mechanisms (clsact, TCX, netkit) and the netkit-specific concessions that follow, the per-interface preamble, the two-tier jump maps that decouple per-endpoint policy from generic packet-handling, the `skb->cb` allow/deny convention, and the fast/debug path machinery. Also covers the `cali_iface` ifstate map and the attach-gap protection it enables.
 
 This is one of several sub-designs for the eBPF dataplane. See
 [`bpf-overview.md`](./bpf-overview.md) for the packet-path mental
@@ -31,6 +31,77 @@ would have to reload the full program set every time policy changes
 and every time it restarts. The current design decouples the programs
 that rarely change (the packet-handling code) from the programs that
 frequently change (per-endpoint policy).
+
+### Attach mechanisms (clsact, TCX, netkit)
+
+The same packet-processing programs are attached via one of three
+kernel mechanisms, selected per interface:
+
+- **Legacy clsact (TC)** — the classic `BPF_PROG_TYPE_SCHED_CLS`
+  on the per-interface clsact ingress/egress filter. The fallback
+  on kernels that do not support TCX.
+- **TCX** — preferred when the kernel supports it. Same program
+  type as clsact, attached via `bpf_link` to the per-interface
+  TCX hook.
+- **Netkit, workload interfaces only** — when the workload
+  interface is a netkit device (rather than a veth), Felix
+  attaches via the netkit attach API, with `BPF_NETKIT_PRIMARY`
+  for the host-side (to-pod, TC-egress equivalent) program and
+  `BPF_NETKIT_PEER` for the peer (from-pod, TC-ingress
+  equivalent) program. Felix detects netkit support at runtime
+  (`tc.IsNetkitSupported` in `felix/bpf/tc/attach.go`) and only
+  uses netkit attachment for the workload interfaces it
+  manages — host or data-plane netkit devices are not Felix's
+  concern. The internal signal `AttachPoint.Netkit` is set
+  separately from the user-facing `BPFAttachType` enum so that
+  the override is scoped to Felix's own detection.
+
+A netkit-enabled cluster is not a wholesale swap. Felix selects
+the attach mechanism per attach point at attach time
+(`calculateTCAttachPoint` in `bpf_ep_mgr.go`): TC clsact or TCX
+for HEPs, tunnels, the bpfnat and loopback pair, and any workload
+interface that is still a regular veth; netkit only for workload
+interfaces that are themselves netkit devices. A single Felix
+process therefore programs both styles concurrently — the
+supporting machinery (jump-map sets, globals plumbing, cleanup
+paths) handles both in parallel rather than switching wholesale
+when netkit is enabled.
+
+The packet-handling code is mechanism-agnostic — same preamble,
+same jump-map layout, same policy program — with four
+netkit-specific concessions:
+
+- **Separate jump maps.** Netkit programs have a different
+  `expected_attach_type` from TC/TCX; the kernel rejects a
+  prog_array that mixes the two. Felix maintains a parallel set
+  of `prog_array` maps for netkit, pinned under
+  `bpfdefs.NetkitPinDir` (`/sys/fs/bpf/netkit`) instead of the
+  TCX directory. See `NetkitJumpMaps` in
+  `felix/bpf/bpfmap/bpf_maps.go` and `netkitPinOverrides` in
+  `felix/bpf/hook/map.go`. The endpoint manager carries a
+  matching `netkitJumpMapAllocs` allocator alongside the TC one
+  in `felix/dataplane/linux/bpf_ep_mgr.go`.
+- **`host_ifindex` global.** A netkit peer program runs in the
+  pod's network namespace, so `skb->ifindex` on a peer-program
+  call is the *peer* ifindex, not the host-side one. Felix
+  populates `host_ifindex` in the per-attach-point globals
+  (`felix/bpf-gpl/globals.h`). Helpers keyed by host-side
+  ifindex — `wep_rpf_check` in `rpf.h`, the QoS map lookup in
+  `qos.h`, the per-interface counters macro in `types.h`, and
+  the FIB redirect path in `fib_co_re.h` — read `host_ifindex`
+  first and fall back to `skb->ifindex` only when it is zero
+  (the TC/TCX case).
+- **No `bpf_redirect_peer`.** The helper requires
+  `skb_at_tc_ingress` context; netkit programs run in xmit
+  context where the helper silently drops the packet. Felix
+  forces `RedirectPeer = false` on netkit attach points so the
+  FIB path uses plain `bpf_redirect`. Set in
+  `calculateTCAttachPoint` in `bpf_ep_mgr.go`.
+- **Synchronous detach on cleanup.** `detachAndRemoveLinkPins`
+  in `felix/bpf/tc/cleanup.go` opens each pinned link, calls
+  `Detach()`, and only then unlinks the pin file. The same
+  shape applies to TCX cleanup; relying on the kernel's
+  auto-detach when the last reference closes is not enough.
 
 ### The preamble
 
@@ -214,6 +285,25 @@ created.
   through `*tables` should consult `fib_approve` (or an equivalent
   check) for the ifstate-ready flag; otherwise it reopens the
   attach-gap hole.
+- Helpers and maps keyed by the host-side ifindex must read
+  `host_ifindex` from globals first and fall back to
+  `skb->ifindex` only when it is zero. Reading `skb->ifindex`
+  directly works for TC/TCX but on a netkit peer program keys
+  the lookup on the peer ifindex, which the host-side maps
+  don't know about.
+- Code paths that depend on TC ingress context (helpers that
+  check `skb_at_tc_ingress`, etc.) must be gated off for netkit
+  attach points. `bpf_redirect_peer` is the existing example,
+  gated via `RedirectPeer = false` on netkit. A path that takes
+  a similar context dependency without an equivalent gate will
+  silently misbehave on netkit.
+- Every generic sub-program in the chain must be reachable
+  through both the TC/TCX jump maps and `NetkitJumpMaps`. The
+  shared `hook.ProgramsMap` machinery handles this when the
+  sub-program is registered via `tcSubProgNames` and the
+  per-direction `MapPinOverrides` are honoured in the
+  AttachPoint — bypassing that machinery (e.g. pinning into a
+  specific path) silently breaks netkit.
 
 
 

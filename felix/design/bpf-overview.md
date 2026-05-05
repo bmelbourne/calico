@@ -60,8 +60,12 @@ this matching automatically; humans should consult
 
 ### Where programs are attached
 
-Felix attaches TC BPF programs to every interface it cares about on the
-host:
+Felix attaches BPF programs to every interface it cares about on
+the host. The attach mechanism varies — TC clsact, TCX, or the
+netkit attach API for workload netkit interfaces — but the
+packet-handling code is the same. See
+[bpf-tc-programs.md → Attach mechanisms](./bpf-tc-programs.md) for
+the per-mechanism details. The set of attach points is:
 
 - Every workload veth on the host side (`cali*`), both host-ingress
   (TC ingress hook — a packet coming from the pod, policy-egress from
@@ -98,6 +102,12 @@ iptables/nftables chains entirely. `bpf_redirect_peer` goes a step
 further: on a veth destination it hands the packet straight to the
 pod side without running the program attached to the host-side peer,
 which is the usual way into a local workload on the fast path.
+`bpf_redirect_peer` is only safe in TC ingress context (the helper
+checks `skb_at_tc_ingress`); netkit-attached programs run in xmit
+context and would silently drop the packet, so for netkit workload
+attach points Felix forces `bpf_redirect_peer` off and the FIB path
+uses plain `bpf_redirect`. See
+[bpf-tc-programs.md → Attach mechanisms](./bpf-tc-programs.md).
 
 ### When BPF defers to the host stack
 
@@ -381,6 +391,11 @@ Several BPF features depend on kernel version:
   specific attach type should also work under both.
 - Jump maps per TCX direction (kernel 6.12+) — the split into
   `cali_progs_ing` vs `cali_progs_egr` is the workaround ([bpf-tc-programs.md → TC program layout](./bpf-tc-programs.md)).
+- Netkit attach — used only when the workload interface is a
+  netkit device and the kernel supports the netkit attach API.
+  Felix probes at runtime (`tc.IsNetkitSupported`) and falls
+  back to TCX/clsact when not supported. See
+  [bpf-tc-programs.md → Attach mechanisms](./bpf-tc-programs.md).
 - `bpf_redirect_neigh` availability — [bpf-host-networking.md → Host-networked workaround (bpfnat veth)](./bpf-host-networking.md)'s bpfnat turnaround falls
   back to bounce-off-the-veth when this helper isn't available.
 - IP defrag sub-program (`SubProgIPFrag`) — older verifiers reject
