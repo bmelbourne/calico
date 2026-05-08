@@ -6,6 +6,7 @@ applyTo:
   - "felix/dataplane/linux/vxlan_mgr.go"
   - "felix/dataplane/linux/dataplanedefs/dataplane_defs.go"
   - "felix/rules/static.go"
+  - "felix/fv/bpf_*_test.go"
 ---
 
 # eBPF dataplane
@@ -42,16 +43,15 @@ and external resources. Follow the links.
 
 ## Update rule
 
-A BPF dataplane PR that **changes how the dataplane works** must
-update the relevant section of the matching sub-design (and
-`bpf-overview.md` if cross-cutting content is affected) in the
-same PR.
-
-**Exemption.** No doc update is needed if the PR is exclusively
-one of: (a) a bug fix that restores behaviour the doc already
-describes, (b) a mechanical refactor with no observable change,
-(c) comment / log-message edits, (d) a dependency bump. If in
-doubt, update the doc.
+The repo-wide doc-update rule
+([`.github/copilot-instructions.md` → Documentation map](../copilot-instructions.md),
+mirrored in
+[`.claude/CLAUDE.md`](../../.claude/CLAUDE.md)) applies. For the
+BPF dataplane, "changes how it works" means a new sub-program,
+CT flag, mark bit, map or map field, or any change to the packet
+path or forwarding decision. The relevant section of the matching
+sub-design (and `bpf-overview.md` if cross-cutting content is
+affected) must be updated in the same PR.
 
 ## Amending the PR
 

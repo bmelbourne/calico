@@ -211,6 +211,7 @@ large enough to bloat AI-tool context.
 | [bpf-conntrack-flowstate](./design/bpf-conntrack-flowstate.md) | `felix/bpf/conntrack/**`, `felix/bpf-gpl/conntrack*.{c,h}`, `rpf.h`, `felix/bpf/allowsources/**`, `felix/rules/static.go` | ✅ exists |
 | [bpf-encap-fragments-icmp](./design/bpf-encap-fragments-icmp.md) | `felix/bpf/ipfrags/**`, `felix/bpf-gpl/ip_v4_fragment.h`, `tc_ip_frag.c`, `icmp*.h`, `fib*.h`, `felix/bpf/routes/**`, `felix/dataplane/linux/vxlan_mgr.go` | ✅ exists |
 | [bpf-observability](./design/bpf-observability.md) | `felix/bpf/filter/**`, `events/**`, `ringbuf/**`, `qos/**`, `felix/bpf-gpl/log.h`, `events*.h`, `qos.h`, `ringbuf.h` | ✅ exists |
+| [bpf-tests](./design/bpf-tests.md) | `felix/bpf/ut/**`, `felix/fv/bpf_*_test.go` | ✅ exists |
 | tables-dataplane | `felix/iptables/**`, `felix/nftables/**`, `felix/generictables/**`, non-BPF parts of `felix/rules/**`, non-BPF parts of `felix/dataplane/linux/` | *not yet written* |
 | calc-graph | `felix/calc/**` | *not yet written* |
 | route-sync | `felix/routetable/**`, `felix/routerule/**`, `felix/vxlanfdb/**` | *not yet written* |

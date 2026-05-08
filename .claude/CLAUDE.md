@@ -304,17 +304,48 @@ Where it lives:
 2. Follow links. A sub-design may reference sibling docs, other
    components' designs, or external references. Load them — a
    design is a graph, not a single node.
-3. A PR that changes how a component works in a way that
-   introduces a new invariant, flag, map, mark, sub-program, or
-   alters the packet/data path must update the relevant
-   `DESIGN.md` in the same PR. For components with a design
-   directory (Felix uses `felix/design/`), "update `DESIGN.md`"
-   means update the relevant file under that directory — the
-   sub-design covering the area — and/or the index itself when
-   the sub-design table or scope changes. Exemptions: bug fix
-   restoring documented behaviour, mechanical refactor, comment
-   or log-message edits, dependency bumps. If in doubt, update
-   the doc.
+3. A PR that changes how a component works — its behaviour,
+   data model, configuration surface, or any invariant the
+   design doc records — must update the relevant `DESIGN.md` in
+   the same PR. For components with a design directory (Felix
+   uses `felix/design/`), this means updating the relevant file
+   under that directory — the sub-design covering the area —
+   and/or the index itself when the sub-design table or scope
+   changes. Exemptions: bug fix restoring documented behaviour,
+   mechanical refactor, comment or log-message edits, dependency
+   bumps. If in doubt, update the doc.
+
+## Tests required for code changes
+
+A PR that fixes a bug must include a test in the same PR that
+reproduces the bug. A PR that adds a feature must include tests
+that exercise the feature. A change without a corresponding test
+is the exception, not the default, and requires explicit
+justification (untestable interface boundary, infrastructure-only
+change).
+
+Prefer the lowest test level that meaningfully exercises the
+change:
+
+1. **Unit tests** — deterministic, fast, hermetic. Always the
+   first choice when the behaviour can be reached without real
+   infrastructure. UT failures point at the change directly.
+2. **Functional verification (FV) tests** — real binary against
+   real infrastructure (containers, dataplane, kernel). Catch
+   integration bugs UT cannot, but slower, harder to write, and
+   can flake. Use FV when the integration *is* the thing being
+   tested.
+3. **End-to-end / Kubernetes tests** — full stack against a real
+   cluster. Reserve for behaviour that genuinely requires it.
+
+Tests-only follow-ups are an anti-pattern: by the time they land,
+the change has shipped untested. A reviewer who sees "I tested it
+manually" or "tests in a follow-up PR" should push back.
+
+Per-area sub-designs carry the area-specific test conventions on
+top of this general rule (e.g.
+[`felix/design/bpf-tests.md`](../felix/design/bpf-tests.md) for
+the BPF dataplane).
 
 ## Common Development Workflows
 

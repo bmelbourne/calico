@@ -59,26 +59,7 @@ BPF functional tests run the standard FV suite with the BPF dataplane enabled:
 make fv-bpf GINKGO_FOCUS="TestName"
 ```
 
-Tests in `fv/bpf_*_test.go` are focused on the BPF dataplane itself. Tests prefixed with `_BPF-SAFE_` in other FV files test Calico's general behavior and are largely the same across all dataplanes. The dataplane tests in `fv/bpf_*_test.go` can be refined with a matrix prefix:
-
-```
-"ipv4 udp, ct=true, log=debug, tunnel=none, dsr=false"
-```
-
-| Parameter | Values                                      |
-|-----------|---------------------------------------------|
-| ip version| `ipv4`, `ipv6`                              |
-| protocol  | `tcp`, `udp`, `udp-unconnected`, `udp-conn-recvmsg` |
-| ct        | `true`, `false`                              |
-| log       | `debug`, `off`                               |
-| tunnel    | `none`, `ipip`, `vxlan`, `wireguard`         |
-| dsr       | `true`, `false`                              |
-
-Example: run a specific BPF FV test only for IPv4 UDP with no tunnel:
-
-```bash
-make fv-bpf GINKGO_FOCUS="ipv4 udp, ct=true, log=debug, tunnel=none, dsr=false.*MyTestName"
-```
+`fv/bpf_*_test.go` tests carry a matrix prefix (e.g. `"ipv4 udp, ct=true, log=debug, tunnel=none, dsr=false"`) which `GINKGO_FOCUS` can regex-match to slice the matrix when triaging. The matrix axes, the `_BPF-SAFE_` convention for shared FV tests, and the harness conventions for `bpf/ut/` are documented in [`design/bpf-tests.md`](./design/bpf-tests.md).
 
 ### Nftables Functional Tests
 
@@ -99,12 +80,6 @@ fv-tests-guru -debug-logfile <log-path> -ai-provider gemini -calico-repo <path-t
 ```
 
 Add `-ut` for unit test logs. Use `-extra-context "..."` to provide hints about the branch under test.
-
-## BPF unit test harness (`bpf/ut/`)
-
-`bpf/ut/bpf_prog_test.go` is the test harness. Each file in `bpf/ut/` presents a set of tests for one feature (NAT, ICMP handling, policy, BPF load verification, etc.). Each test has sub-tests that exercise a BPF program attached to a single interface in a single direction (ingress or egress) in a single scenario. The scenario (maps, routes, conntrack entries, etc.) is set up outside the sub-test.
-
-Typically, back-to-back sub-tests simulate a packet traversing from one interface to the next — for example, host to workload or workload to workload on the same host. Assigning to `hostIP` and running host-to-host back-to-back sub-tests simulates a packet traversing from one host to another within the cluster.
 
 ## Configuration parameters
 

@@ -288,23 +288,18 @@ dataplane review because several subsystems happen to share them.
 
 ### Keep this document in sync with the code
 
-A BPF dataplane PR that changes how the dataplane works — a new
-sub-program, a new CT flag, a new mark bit, a new map or map field,
-a change to the packet path or forwarding decision, or a new config
-knob affecting any of those — must update the relevant section of
-this document in the same PR.
-
-Exemptions: (a) a bug fix that restores behaviour this document
-already describes, (b) a mechanical refactor with no observable
-change, (c) comment or log-message edits, (d) dependency bumps. If
-in doubt, update the doc.
-
-This rule is mirrored in `felix/CLAUDE.md` (for Claude's `/review`
-skill) and in `.github/copilot-instructions.md` plus the
-path-scoped `.github/instructions/bpf.instructions.md` (for
-GitHub Copilot's automated review). Those files are short
-pointers; this document and its sibling sub-designs under
-[`felix/design/`](.) are the source of truth.
+The repo-wide doc-update rule
+([`.claude/CLAUDE.md` → Documentation map](../../.claude/CLAUDE.md),
+mirrored in
+[`.github/copilot-instructions.md`](../../.github/copilot-instructions.md))
+applies. For the BPF dataplane, "changes how it works" means a
+new sub-program, a new CT flag, a new mark bit, a new map or map
+field, a new config knob affecting any of those, or any change
+to the packet path or forwarding decision. The relevant section
+of the matching sub-design (and `bpf-overview.md` if cross-cutting
+content is affected) must be updated in the same PR. This file
+and its sibling sub-designs under [`felix/design/`](.) are the
+source of truth.
 
 ### Changes that touch shared maps
 
