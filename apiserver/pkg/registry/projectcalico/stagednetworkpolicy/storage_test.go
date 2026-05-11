@@ -19,7 +19,7 @@ import (
 	"errors"
 	"testing"
 
-	v3 "github.com/tigera/api/pkg/apis/projectcalico/v3"
+	v3 "github.com/projectcalico/api/pkg/apis/projectcalico/v3"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,8 +38,6 @@ type stubLister struct{}
 func (stubLister) ListTiers() ([]*v3.Tier, error) {
 	return []*v3.Tier{{ObjectMeta: metav1.ObjectMeta{Name: "default"}}}, nil
 }
-func (stubLister) ListUISettingsGroups() ([]*v3.UISettingsGroup, error) { return nil, nil }
-func (stubLister) ListManagedClusters() ([]*v3.ManagedCluster, error)   { return nil, nil }
 
 func deleteCollectionContext() context.Context {
 	ctx := genericapirequest.NewContext()

@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	v3 "github.com/tigera/api/pkg/apis/projectcalico/v3"
+	v3 "github.com/projectcalico/api/pkg/apis/projectcalico/v3"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,14 +62,6 @@ func (f *fakeCalicoResourceLister) ListTiers() ([]*v3.Tier, error) {
 		out = append(out, &v3.Tier{ObjectMeta: metav1.ObjectMeta{Name: t}})
 	}
 	return out, nil
-}
-
-func (f *fakeCalicoResourceLister) ListUISettingsGroups() ([]*v3.UISettingsGroup, error) {
-	return nil, nil
-}
-
-func (f *fakeCalicoResourceLister) ListManagedClusters() ([]*v3.ManagedCluster, error) {
-	return nil, nil
 }
 
 // requestContext returns a context wired up with the user / RequestInfo that
